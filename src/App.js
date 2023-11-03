@@ -1,45 +1,79 @@
+//@ts-check
 import { Console, Random } from "@woowacourse/mission-utils";
 import MESSEGE from "./Messages";
+import Amount from "./Amount";
+import Utils from "./Utils";
+import Lotto from "./Lotto";
 
 class App {
-  #amt = 0;
-  async pay() {
-    const amt = await Console.readLineAsync(MESSEGE.INPUT_BUY_AMT);
-    const buyAmt = Number(amt);
-    if (isNaN(buyAmt) || buyAmt % 1000 !== 0) {
-      Console.print(MESSEGE.ERROR_NUMBER);
-      return false;
-    }
-    this.#amt = buyAmt;
-    return true;
+  /** @type {Amount} */
+  #amt;
+  /** @type {Lotto[]} */
+  #lottoArray = [];
+  #utils;
+
+  constructor() {
+    this.#utils = new Utils();
   }
 
-  async play() {
-    let isCorrect = false;
-    while (!isCorrect) {
-      isCorrect = await this.pay();
+  async pay() {
+    const amt = await Console.readLineAsync(MESSEGE.INPUT_BUY_AMT);
+    try {
+      this.#amt = new Amount(Number(amt));
+      Console.print(`${this.#amt.lottoCount}${MESSEGE.SHOW_BUY_COUNT}`);
+      return true;
+    } catch (e){
+      Console.print(e.message);
+      return false;
     }
-    const buyCount = parseInt(this.#amt / 1000);
-    Console.print(`${buyCount}${MESSEGE.SHOW_BUY_COUNT}`);
-    const lottoArray = Array.from({ length: buyCount }, () =>
-      Random.pickUniqueNumbersInRange(1, 45, 6)
-    );
-    lottoArray.forEach((l) => Console.print(`[${l.join(", ")}]`));
+  }
+  /** true가 나올때까지 pay를 반복하는 메서드 */
+  async repeatPay() {
+    const isValid = await this.pay();
+    if (!isValid) {
+      await this.repeatPay();
+    }
+  }
+  /**
+   * 숫자를 입력받아 입력받은 숫자만큼 로또배열을 생성한다.
+   * @param {number} num
+   */
+  createLottosByCount(num) {
+    /** @type {Lotto[]} */
+    const numbers = [];
+    for (let i = 0; i < num; i++) {
+      const lottoNumbers = Random.pickUniqueNumbersInRange(1, 45, 6);
+      const lotto = new Lotto(lottoNumbers);
+      numbers.push(lotto);
+      this.#utils.lottoStringPrint(lotto.getLottoNumbers);
+    }
+    return numbers;
+  }
 
+  async selectWinningNumbers() {
     const lottoNumsStr = await Console.readLineAsync(MESSEGE.INPUT_WIN_NUM);
     const lottoRegex = /^\d+(,\d+)*$/;
     if (!lottoRegex.test(lottoNumsStr))
       throw new Error(MESSEGE.ERROR_LOTTO_NUMBER);
-    const lottoNums = lottoNumsStr.split(",").map(Number);
+    return lottoNumsStr.split(",").map(Number);
+  }
 
+  async selectBonusNumber() {
     const bonusNumStr = await Console.readLineAsync(MESSEGE.INPUT_BONUS_NUM);
     const bonusNum = Number(bonusNumStr);
     if (isNaN(bonusNum)) throw new Error(MESSEGE.ERROR_NUMBER);
-
-    const lottoResults = lottoArray.map((lottos) =>
-      lottos.reduce(
+    return bonusNum;
+  }
+  /**
+   * @param {Lotto[]} lottoResults
+   * @param {Lotto} winningNums
+   * @param {number} bonusNum
+   */
+  #getLottoResults(lottoResults, winningNums, bonusNum) {
+    return lottoResults.map((lottos) =>
+      lottos.getLottoNumbers.reduce(
         (result, num) =>
-          lottoNums.includes(num)
+          winningNums.getLottoNumbers.includes(num)
             ? { ...result, score: result.score + 1 }
             : num === bonusNum
             ? { ...result, bonus: true }
@@ -47,53 +81,43 @@ class App {
         { score: 0, bonus: false }
       )
     );
-    const resultCounts = lottoResults.reduce(
+  }
+
+  /** @param {{score: number, bonus: boolean}[]} lottoResults*/
+  #getRanks(lottoResults) {
+    return lottoResults.reduce(
       (counts, { score, bonus }) => {
-        const temp = counts.slice();
-        if (score === 3) return (temp[0] = temp[0] + 1), temp;
-        if (score === 4) return (temp[1] = temp[1] + 1), temp;
-        if (score === 5) return (temp[2] = temp[2] + 1), temp;
-        if (score === 5 && bonus) return (temp[3] = temp[3] + 1), temp;
-        if (score === 6) return (temp[4] = temp[4] + 1), temp;
-        return counts;
+        switch (score) {
+          case 3:
+            return (counts[0] = counts[0] + 1), counts;
+          case 4:
+            return (counts[1] = counts[1] + 1), counts;
+          case 5:
+            return !bonus
+              ? ((counts[2] = counts[2] + 1), counts)
+              : ((counts[3] = counts[3] + 1), counts);
+          case 6:
+            return (counts[4] = counts[4] + 1), counts;
+          default:
+            return counts;
+        }
       },
       [0, 0, 0, 0, 0]
     );
+  }
+  async play() {
+    await this.repeatPay();
+    this.#lottoArray = this.createLottosByCount(this.#amt.lottoCount);
+    const lottoNums = new Lotto(await this.selectWinningNumbers());
+    const bonusNum = await this.selectBonusNumber();
 
-    const price = Object.freeze([
-      5_000, 50_000, 1_500_000, 30_000_000, 2_000_000_000,
-    ]);
-
-    Console.print(MESSEGE.SUMMARY);
-    Console.print("---");
-    Console.print(
-      `3${MESSEGE.NUMBER_FIT} (${price[0].toLocaleString()}${MESSEGE.WON}) - ${
-        resultCounts[0]
-      }${MESSEGE.COUNT}`
+    const lottoResults = this.#getLottoResults(
+      this.#lottoArray,
+      lottoNums,
+      bonusNum
     );
-    Console.print(
-      `4${MESSEGE.NUMBER_FIT} (${price[1].toLocaleString()}${MESSEGE.WON}) - ${
-        resultCounts[1]
-      }${MESSEGE.COUNT}`
-    );
-    Console.print(
-      `5${MESSEGE.NUMBER_FIT} (${price[2].toLocaleString()}${MESSEGE.WON}) - ${
-        resultCounts[2]
-      }${MESSEGE.COUNT}`
-    );
-    Console.print(
-      `5${MESSEGE.NUMBER_FIT}, ${
-        MESSEGE.BONUS_FIT
-      } (${price[3].toLocaleString()}${MESSEGE.WON}) - ${resultCounts[3]}${
-        MESSEGE.COUNT
-      }`
-    );
-    Console.print(
-      `6${MESSEGE.NUMBER_FIT} (${price[4].toLocaleString()}${MESSEGE.WON}) - ${
-        resultCounts[4]
-      }${MESSEGE.COUNT}`
-    );
-    Console.print(`${MESSEGE.TOTAL_BENEFIT} 62.5%${MESSEGE.IS}`);
+    const resultCounts = this.#getRanks(lottoResults);
+    this.#utils.continuouslyWinnerPrint(resultCounts, this.#amt.amount);
   }
 }
 
