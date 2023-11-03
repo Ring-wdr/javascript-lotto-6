@@ -1,4 +1,4 @@
-declare global {
+declare module "@woowacourse/mission-utils" {
   class Random {
     static pickUniqueNumbersInRange(
       startInclusive: number,
