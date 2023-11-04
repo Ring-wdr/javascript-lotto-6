@@ -1,4 +1,10 @@
 {
-  "exclude": ["node_modules"],
-  "compilerOptions": { "target": "es2020" }
+  "exclude": ["node_modules", "__tests__"],
+  "compilerOptions": {
+    "module": "ES2022",
+    "baseUrl": "/src",
+    "target": "es2022",
+    "checkJs": true,
+    "alwaysStrict": true
+  }
 }

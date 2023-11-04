@@ -1,5 +1,3 @@
-//@ts-check
-
 import Lotto from "./Lotto";
 import LottoWins from "./LottoWins";
 
@@ -44,27 +42,24 @@ class LottoSummary {
    */
   #calculateRanks(lottoResults) {
     const initValue = [0, 0, 0, 0, 0];
-    return lottoResults.reduce(
-      (counts, { score, bonus }) => {
-        switch (score) {
-          case 3:
-            return counts[0]++, counts;
-          case 4:
-            return counts[1]++, counts;
-          case 5:
-            return !bonus ? (counts[2]++, counts) : (counts[3]++, counts);
-          case 6:
-            return counts[4]++, counts;
-          default:
-            return counts;
-        }
-      },
-      initValue
-    );
+    return lottoResults.reduce((counts, { score, bonus }) => {
+      switch (score) {
+        case 3:
+          return counts[0]++, counts;
+        case 4:
+          return counts[1]++, counts;
+        case 5:
+          return !bonus ? (counts[2]++, counts) : (counts[3]++, counts);
+        case 6:
+          return counts[4]++, counts;
+        default:
+          return counts;
+      }
+    }, initValue);
   }
 
   /** @readonly */
-  get ranks(){
+  get ranks() {
     return this.#ranks;
   }
 }

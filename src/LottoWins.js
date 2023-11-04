@@ -1,7 +1,6 @@
-//@ts-check
-
 import Lotto from "./Lotto";
 import MESSEGE from "./Messages";
+import Validation from "./Validation";
 
 class LottoWins extends Lotto {
   #bonus;
@@ -17,8 +16,8 @@ class LottoWins extends Lotto {
   }
   /** @param {number} bonus  */
   #validateBonus(bonus) {
-    if (isNaN(bonus) || bonus < 1 || bonus > 45) {
-      throw new Error(MESSEGE.ERROR_NUMBER);
+    if (Validation.notLottoRangeNumber(bonus)) {
+      throw new Error(MESSEGE.ERROR_LOTTO_NOT_RANGE);
     }
   }
 

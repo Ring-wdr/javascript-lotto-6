@@ -1,8 +1,7 @@
-//@ts-check
 import { Console, Random } from "@woowacourse/mission-utils";
 import MESSEGE from "./Messages";
 import Amount from "./Amount";
-import Utils from "./Utils";
+import Validation from "./Validation";
 import Lotto from "./Lotto";
 import LottoWins from "./LottoWins";
 import LottoSummary from "./LottoSummary";
@@ -63,7 +62,7 @@ class App {
   /** 로또 당첨 번호 6개를 입력받아 배열로 리턴하는 메서드*/
   async #selectWinningNumbers() {
     const lottoNumsStr = await Console.readLineAsync(MESSEGE.INPUT_WIN_NUM);
-    if (!Utils.isLottoArrayString(lottoNumsStr)) {
+    if (!Validation.isLottoArrayString(lottoNumsStr)) {
       throw new Error(MESSEGE.ERROR_LOTTO_NUMBER);
     }
     return lottoNumsStr.split(",").map(Number);
