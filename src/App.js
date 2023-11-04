@@ -4,120 +4,89 @@ import MESSEGE from "./Messages";
 import Amount from "./Amount";
 import Utils from "./Utils";
 import Lotto from "./Lotto";
+import LottoWins from "./LottoWins";
+import LottoSummary from "./LottoSummary";
+import LottoPrinter from "./LottoPrinter";
 
 class App {
-  /** @type {Amount} */
+  /** @type {Amount} 사용자에게 입력받은 금액과 로또 갯수를 저장하는 인스턴스 */
   #amt;
-  /** @type {Lotto[]} */
+  /** @type {Lotto[]} 생성된 로또들을 보관하는 배열*/
   #lottoArray = [];
-  #utils;
+  /** @type {LottoWins} 당첨 번호를 저장하는 필드*/
+  #lottoWins;
+  /** @type {LottoSummary} 경기 결과를 기록하는 필드*/
+  #lottoRanks;
 
-  constructor() {
-    this.#utils = new Utils();
+  async play() {
+    await this.repeatPayUntilValid();
+    this.#createLottosByCount();
+    await this.#getWinningNumber();
+    this.#getRanks();
+    this.#finish();
   }
 
-  async pay() {
+  /** 사용자로부터 금액을 입력받아 내부 필드에 인스턴스를 저장하는 메서드 */
+  async #pay() {
     const amt = await Console.readLineAsync(MESSEGE.INPUT_BUY_AMT);
     try {
       this.#amt = new Amount(Number(amt));
       Console.print(`${this.#amt.lottoCount}${MESSEGE.SHOW_BUY_COUNT}`);
       return true;
-    } catch (e){
+    } catch (e) {
       Console.print(e.message);
       return false;
     }
   }
   /** true가 나올때까지 pay를 반복하는 메서드 */
-  async repeatPay() {
-    const isValid = await this.pay();
+  async repeatPayUntilValid() {
+    const isValid = await this.#pay();
     if (!isValid) {
-      await this.repeatPay();
+      await this.repeatPayUntilValid();
     }
   }
-  /**
-   * 숫자를 입력받아 입력받은 숫자만큼 로또배열을 생성한다.
-   * @param {number} num
-   */
-  createLottosByCount(num) {
+
+  /** 초기 정보를 바탕으로 로또 배열을 필드에 생성하는 메서드 */
+  #createLottosByCount() {
     /** @type {Lotto[]} */
     const numbers = [];
+    const num = this.#amt.lottoCount;
     for (let i = 0; i < num; i++) {
       const lottoNumbers = Random.pickUniqueNumbersInRange(1, 45, 6);
       const lotto = new Lotto(lottoNumbers);
       numbers.push(lotto);
-      this.#utils.lottoStringPrint(lotto.getLottoNumbers);
+      LottoPrinter.stringPrint(lotto);
     }
-    return numbers;
+    this.#lottoArray = numbers;
   }
 
-  async selectWinningNumbers() {
+  /** 로또 당첨 번호 6개를 입력받아 배열로 리턴하는 메서드*/
+  async #selectWinningNumbers() {
     const lottoNumsStr = await Console.readLineAsync(MESSEGE.INPUT_WIN_NUM);
-    const lottoRegex = /^\d+(,\d+)*$/;
-    if (!lottoRegex.test(lottoNumsStr))
+    if (!Utils.isLottoArrayString(lottoNumsStr)) {
       throw new Error(MESSEGE.ERROR_LOTTO_NUMBER);
+    }
     return lottoNumsStr.split(",").map(Number);
   }
 
-  async selectBonusNumber() {
+  /** 당첨번호와 보너스 번호로 생성한 인스턴스를 필드에 저장하는 메서드 */
+  async #getWinningNumber() {
+    /** 당첨 번호 6개 */
+    const lottoNums = await this.#selectWinningNumbers();
+    /** 보너스 번호 숫자 */
     const bonusNumStr = await Console.readLineAsync(MESSEGE.INPUT_BONUS_NUM);
-    const bonusNum = Number(bonusNumStr);
-    if (isNaN(bonusNum)) throw new Error(MESSEGE.ERROR_NUMBER);
-    return bonusNum;
-  }
-  /**
-   * @param {Lotto[]} lottoResults
-   * @param {Lotto} winningNums
-   * @param {number} bonusNum
-   */
-  #getLottoResults(lottoResults, winningNums, bonusNum) {
-    return lottoResults.map((lottos) =>
-      lottos.getLottoNumbers.reduce(
-        (result, num) =>
-          winningNums.getLottoNumbers.includes(num)
-            ? { ...result, score: result.score + 1 }
-            : num === bonusNum
-            ? { ...result, bonus: true }
-            : result,
-        { score: 0, bonus: false }
-      )
-    );
+    this.#lottoWins = new LottoWins(lottoNums, Number(bonusNumStr));
   }
 
-  /** @param {{score: number, bonus: boolean}[]} lottoResults*/
-  #getRanks(lottoResults) {
-    return lottoResults.reduce(
-      (counts, { score, bonus }) => {
-        switch (score) {
-          case 3:
-            return (counts[0] = counts[0] + 1), counts;
-          case 4:
-            return (counts[1] = counts[1] + 1), counts;
-          case 5:
-            return !bonus
-              ? ((counts[2] = counts[2] + 1), counts)
-              : ((counts[3] = counts[3] + 1), counts);
-          case 6:
-            return (counts[4] = counts[4] + 1), counts;
-          default:
-            return counts;
-        }
-      },
-      [0, 0, 0, 0, 0]
-    );
+  /** 5등부터 1등순으로 인원을 담는 배열을 생성하는 메서드 */
+  #getRanks() {
+    this.#lottoRanks = new LottoSummary(this.#lottoArray, this.#lottoWins);
   }
-  async play() {
-    await this.repeatPay();
-    this.#lottoArray = this.createLottosByCount(this.#amt.lottoCount);
-    const lottoNums = new Lotto(await this.selectWinningNumbers());
-    const bonusNum = await this.selectBonusNumber();
 
-    const lottoResults = this.#getLottoResults(
-      this.#lottoArray,
-      lottoNums,
-      bonusNum
-    );
-    const resultCounts = this.#getRanks(lottoResults);
-    this.#utils.continuouslyWinnerPrint(resultCounts, this.#amt.amount);
+  #finish() {
+    Console.print(MESSEGE.SUMMARY);
+    Console.print("---");
+    LottoPrinter.continuouslyWinnerPrint(this.#lottoRanks, this.#amt);
   }
 }
 
