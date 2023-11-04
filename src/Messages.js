@@ -1,5 +1,6 @@
 const MESSEGE = Object.freeze({
   ERROR_NUMBER: "[ERROR] 숫자가 잘못된 형식입니다.",
+  ERROR_LOTTO_NOT_RANGE: "[ERROR] 로또 번호의 숫자 범위는 1~45까지입니다.",
   ERROR_LOTTO_NUMBER: "[ERROR] 쉼표로 구분된 숫자 형식이 아닙니다.",
   ERROR_LOTTO_SIX: "[ERROR] 로또 번호는 6개여야 합니다.",
   ERROR_LOTTO_DUPL:"[ERROR] 로또 번호는 중복된 숫자가 없어야 합니다.",
